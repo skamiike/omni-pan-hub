@@ -1,8 +1,18 @@
 import Link from 'next/link';
 
 export default function Marketplace() {
-  // Dummy data representing items pulled from the blockchain / Supabase
   const items = [
+    {
+      id: 3, // Moved the RWA item to the top to showcase the Anchor Tenant strategy
+      title: "Physical Rolex Daytona (RWA Token)",
+      creator: "KOMEHYO Official",
+      owner: "Vault_Deployer",
+      type: "auction",
+      currentBid: "15,000 USDC",
+      timeLeft: "14h 12m",
+      image: "https://placehold.co/400x300/1e293b/fff?text=Rolex+RWA",
+      isVerified: true, // This flag triggers the verified badge
+    },
     {
       id: 1,
       title: "Neon City Concept - Original",
@@ -12,6 +22,7 @@ export default function Marketplace() {
       currentBid: "1,250 MATIC",
       timeLeft: "02h 45m",
       image: "https://placehold.co/400x300/1e293b/fff?text=Neon+City",
+      isVerified: false,
     },
     {
       id: 2,
@@ -21,16 +32,7 @@ export default function Marketplace() {
       type: "fixed",
       price: "500 MATIC",
       image: "https://placehold.co/400x300/1e293b/fff?text=Holo+Pet",
-    },
-    {
-      id: 3,
-      title: "Physical Rolex Daytona (RWA Token)",
-      creator: "Luxury Vault",
-      owner: "Vault_Deployer",
-      type: "auction",
-      currentBid: "15,000 USDC",
-      timeLeft: "14h 12m",
-      image: "https://placehold.co/400x300/1e293b/fff?text=Rolex+RWA",
+      isVerified: false,
     }
   ];
 
@@ -68,7 +70,14 @@ export default function Marketplace() {
                   )}
                 </div>
                 
-                <p className="text-sm text-gray-400 mb-1">Creator: <span className="text-blue-400">{item.creator}</span></p>
+                <p className="text-sm text-gray-400 mb-1 flex items-center gap-1">
+                  Creator: <span className="text-blue-400">{item.creator}</span>
+                  {item.isVerified && (
+                    <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </p>
                 <p className="text-sm text-gray-400 mb-6">Owner: {item.owner}</p>
 
                 {item.type === 'auction' ? (
