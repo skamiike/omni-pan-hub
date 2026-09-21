@@ -16,20 +16,23 @@ contract OmniPanHub is ERC721URIStorage, Ownable {
         address creator;
         uint256 price;
         string requirements;
+        bool requiresApproval; // true = "修正あり(クライアントの承認が必要)", false = "一発勝負(納品即時決済)"
         bool isCompleted;
+        bool isApproved;
         bool isCancelled;
     }
 
     mapping(uint256 => Job) public jobs;
 
-    event JobCreated(uint256 indexed jobId, address indexed client, address indexed creator, uint256 price);
+    event JobCreated(uint256 indexed jobId, address indexed client, address indexed creator, uint256 price, bool requiresApproval);
+    event JobDelivered(uint256 indexed jobId, string tokenURI);
     event JobCompleted(uint256 indexed jobId, uint256 tokenId, string tokenURI);
     event JobCancelled(uint256 indexed jobId);
 
     constructor() ERC721("OmniPanHub NFT", "OPH") Ownable(msg.sender) {}
 
-    // Client creates a job and deposits funds
-    function createJob(address _creator, string memory _requirements) external payable {
+    // Client creates a job
+    function createJob(address _creator, string memory _requirements, bool _requiresApproval) external payable {
         require(msg.value > 0, "Price must be greater than 0");
         require(_creator != address(0) && _creator != msg.sender, "Invalid creator");
 
@@ -42,19 +45,44 @@ contract OmniPanHub is ERC721URIStorage, Ownable {
             creator: _creator,
             price: msg.value,
             requirements: _requirements,
+            requiresApproval: _requiresApproval,
             isCompleted: false,
+            isApproved: false,
             isCancelled: false
         });
 
-        emit JobCreated(newJobId, msg.sender, _creator, msg.value);
+        emit JobCreated(newJobId, msg.sender, _creator, msg.value, _requiresApproval);
     }
 
-    // Creator completes the job, mints the NFT to the client, and funds are split
-    function completeJob(uint256 _jobId, string memory _tokenURI) external {
+    // Creator delivers the job
+    function deliverJob(uint256 _jobId, string memory _tokenURI) external {
         Job storage job = jobs[_jobId];
-        require(msg.sender == job.creator, "Only creator can complete");
+        require(msg.sender == job.creator, "Only creator can deliver");
         require(!job.isCompleted && !job.isCancelled, "Job already closed");
 
+        if (!job.requiresApproval) {
+            // Skeb Style: 一発勝負の場合は即時完了＆決済
+            _finalizeJob(_jobId, _tokenURI);
+        } else {
+            // 修正ありプラン: クライアントの承認待ち状態にする（イベント発行のみで仮納品）
+            emit JobDelivered(_jobId, _tokenURI);
+        }
+    }
+
+    // Client approves the delivered job (only needed if requiresApproval is true)
+    function approveJob(uint256 _jobId, string memory _tokenURI) external {
+        Job storage job = jobs[_jobId];
+        require(msg.sender == job.client, "Only client can approve");
+        require(job.requiresApproval, "Job does not require approval");
+        require(!job.isCompleted && !job.isCancelled, "Job already closed");
+
+        job.isApproved = true;
+        _finalizeJob(_jobId, _tokenURI);
+    }
+
+    // Internal function to handle the actual minting and payment splitting
+    function _finalizeJob(uint256 _jobId, string memory _tokenURI) internal {
+        Job storage job = jobs[_jobId];
         job.isCompleted = true;
 
         // Mint NFT to the client
